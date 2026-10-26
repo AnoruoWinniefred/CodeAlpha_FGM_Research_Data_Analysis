@@ -1,0 +1,167 @@
+
+import pandas as pd
+"""
+FGM Literature Screening Methodology
+
+Data source: PubMed
+Publication period: 2015–2026, inclusive
+
+Inclusion criteria:
+1. FGM/C is the primary research focus.
+2. The study investigates Nigeria or includes Nigeria
+   in a multicountry analysis.
+3. The publication falls within the specified study period.
+
+Exclusion criteria:
+1. Published before 2015 or after 2026.
+2. Study conducted outside Nigeria, including case reports
+   involving Nigerian patients treated in another country.
+3. FGM/C is not the primary research focus.
+4. Multicountry study does not include Nigeria.
+
+Screening outcome:
+70 articles screened; 46 included and 24 excluded.
+"""
+
+# Load your screening dataset
+df = pd.read_csv("fgm_articles_screening.csv", dtype={"pmid": str})
+
+df.columns = df.columns.str.strip()
+df["pmid"] = df["pmid"].fillna("").str.strip()
+
+n_start = len(df)
+print(f"loaded: {n_start} | Duplicate PMIDs: {df['pmid'].duplicated().sum()} | Missing PMIDs: {df['pmid'].isna().sum()}")
+
+# Keep articles published from 2015 to 2026
+df["publication_year"] = pd.to_numeric(
+    df["publication_year"], errors="coerce"
+)
+df = df[df["publication_year"].between(2015, 2026)].copy()
+print (f" Removed by year filter: {n_start - len(df)} | Remaining: {len(df)}")
+
+# Initialize columns
+df["screening_decision"] = "Needs review"
+df["study_location"] = "Not verified"
+df["research_type"] = "Not classified"
+
+
+# --- PRELIMINARY SCREENING DECISIONS ---
+include_ids = [
+    "30692824", "38616797", "40193370", "33463831", "38768111", 
+    "35283977", "34394263", "37584957", "35392944", "27499413", 
+    "40745880", "37585168", "31870245", "36962539", "36258712", 
+    "37461030", "31396592", "26614608", "39228647", "35155663", 
+    "33910545", "33577614", "35164773", "38532404", "28641026", 
+    "31240736", "39994629", "30588898", "40418731", "36318829", 
+    "29777639", "29777640", "38997690", "28784060", "42036654", 
+    "41524131", "41654954", "32127873", "33513163", "25745572", 
+    "42544175", "27355616", "36204905", "25241272", "38595739",
+    "40098091"
+]
+
+exclude_ids = [
+    "33172757", "27707452", "31741540", "34743651", "27724920", 
+    "38622689", "37490461", "36627618", "40333804", "27724946", 
+    "34087606", "38837785", "30907422", "38300228", "29596591", 
+    "31007811", "39902618", "41074098", "36855163",
+    "35094712", "30424713", 
+    "33891651", "31362960", "26955127"
+]
+review_ids = []
+
+inc, exc, rev = set(include_ids), set(exclude_ids), set(review_ids)
+assert not (inc & exc) and not (inc & rev) and not (exc & rev), "Overlapping ID lists"
+
+print("PMIDs in lists but not in dataset:", sorted((inc | exc | rev) - set(df["pmid"])))
+
+listed= set(include_ids) | set(exclude_ids) | set(review_ids)
+print(df.loc[~df["pmid"].isin(listed), ["pmid", "title", "publication_year"]].to_string(index=False))
+# Apply the screening decisions to the dataset
+df.loc[df["pmid"].isin(include_ids), "screening_decision"] = "Include"
+df.loc[df["pmid"].isin(exclude_ids), "screening_decision"] = "Exclude"
+df.loc[df["pmid"].isin(review_ids), "screening_decision"] = "Needs review"
+
+included_df = df[df["screening_decision"] == "Include"].copy()# add to include_ids:
+
+# Extraction fields for the resolved records (place before saving)
+extraction ={
+    "32127873": ("Nigeria (locality not specified)", "Quantitative"),
+    "33513163": ("South-Eastern Nigeria", "Qualitative"),
+    "42544175": ("Nigeria (state not verified)", "Qualitative"),
+    "27355616": ("Nationwide (multi-country: Kenya, Nigeria)", "Quantitative"),}
+    
+extraction.update({"30692824": ("Nigeria", "Literature review"),
+    "38616797": ("South-West Nigeria", "Quantitative - cross-sectional"),
+    "40193370": ("Nigeria", "Quantitative - secondary survey analysis"),
+    "33463831": ("South-Eastern Nigeria", "Qualitative - descriptive"),
+    "38768111": ("South-West Nigeria", "Qualitative - interviews"),
+    "35283977": ("North-Central Nigeria", "Quantitative - cross-sectional survey"),
+    "34394263": ("South-Eastern Nigeria", "Qualitative - exploratory"),
+    "37584957": ("South-Eastern Nigeria", "Quantitative - questionnaire"),
+    "35392944": ("Nigeria", "Quantitative - secondary analysis of NDHS 2013 and 2018"),
+    "27499413": ("South-West Nigeria", "Quantitative - cross-sectional survey"),
+    "40745880": ("Nigeria", "Quantitative - secondary analysis of 2018 NDHS"),
+    "28784060": ("South-West Nigeria", "Qualitative - in-depth interviews"),
+    "37585168": ("Nigeria", "Quantitative - cross-sectional analysis of 2018 NDHS"),
+    "31870245": ("South-Eastern Nigeria", "Qualitative - free listing and thematic analysis"),
+    "36962539": ("Nigeria", "Quantitative - secondary analysis of 2018 NDHS"),
+    "36258712": ("North-Central Nigeria", "Quantitative - cross-sectional study"),
+    "37461030": ("South-Eastern Nigeria", "Quantitative - cross-sectional study"),
+    "31396592": ("South-Eastern Nigeria", "Quantitative - prospective comparative cross-sectional study"),
+    "26614608": ("Northern Nigeria", "Quantitative - cross-sectional study"),
+    "39228647": ("Nigeria", "Quantitative - retrospective cross-sectional analysis"),
+    "35164773": ("South-Eastern Nigeria", "Qualitative - in-depth interviews and thematic content analysis"),
+    "35155663": ("Nigeria (disaggregated from 12-country analysis)", "Quantitative - ecological analysis of DHS data"),
+    "33910545": ("Nigeria", "Quantitative - cohort analysis of national survey data"),
+    "33577614": ("Nigeria", "Quantitative - Bayesian hierarchical spatio-temporal model"),
+    "38532404": ("Nigeria", "Quantitative - mixed-effects multilevel logistic regression"),
+    "28641026": ("Nigeria", "Quantitative - secondary analysis of 2013 NDHS"),
+    "31240736": ("South-West Nigeria", "Quantitative/Qualitative - cross-sectional survey and FGDs"),
+    "39994629": ("South-West Nigeria", "Quantitative - quasi-experimental study"),
+    "30588898": ("Nigeria", "Quantitative - geographically weighted logistic regression"),
+    "40418731": ("Nigeria", "Quantitative - Bayesian hierarchical regression models"),
+    "42036654": ("South-West Nigeria", "Qualitative - semi-structured in-depth interviews"),
+    "41524131": ("Nigeria", "Quantitative - weighted accelerated-failure-time regression survival modelling"),
+    "41654954": ("Nigeria", "Quantitative - multi-year policy impact analysis using MICS data"),
+    "36204905": ("South-West, Nigeria", "Quantitative - cross-sectional descriptive study"),
+    "36318829": ("South-West Nigeria", "Quantitative - cross-sectional descriptive survey"),
+    "29777639": ("Nigeria", "Quantitative - bivariate and multivariate ordered logistic estimates"),
+    "38997690": ("Nigeria", "Quantitative - Bayesian hierarchical models comparing DHS and MICS"),
+    "29777640": ("South-Eastern, Nigeria", "Quantitative - survey using Theory of Planned Behavior and logistic regression"),
+    "25745572": ("Northern Nigeria", "Quantitative - prospective longitudinal study"),
+    "25241272": ("Northern Nigeria", "Quantitative cross-sectional study"),
+    "38595739": ("South-Eastern Nigeria","Qualitative - descriptive design with in-depth interviews"),
+    "40098091": ("Nigeria (disaggregated from 12-country analysis)", "Quantitative - cross-sectional study using DHS data"),})
+
+for pmid, (loc, typ) in extraction.items():
+    df.loc[df["pmid"] == pmid, ["study_location", "research_type"]] = [loc, typ]
+
+# Save the updated working copy
+df.to_csv("fgm_articles_screening.csv", index=False)
+
+# Clean column names
+print("\nSCREENING SUMMARY:")
+print(df["screening_decision"].value_counts())
+print("\nStill unscreened;")
+print(df.loc[df["screening_decision"] == "Needs review", ["pmid","title", "publication_year"]].to_string(index=False))
+
+todo = df[
+    (df["screening_decision"] == "Include") &
+    (df["study_location"] == "Not verified")
+].reset_index(drop=True)
+print(f"Left to extract: {len(todo)}")   # should be 38
+
+start = 0   # then 8, 16, 24, 32
+for _, r in todo.iloc[start:start+8].iterrows():
+    print(f"\nPMID {r['pmid']} ({r['publication_year']})\n{r['title']}\n{r['abstract'][:1000]}\n")
+
+test_ids = ["38997690", "29777640", "31007811", "39902618"]
+print(df.loc[df["pmid"].isin(test_ids), ["pmid", "screening_decision"]])
+print(df["pmid"].head(10).tolist())   # look for ".0" or spaces
+
+print(df["pmid"].str.fullmatch(r"\d{7,8}").value_counts())  # how many look like clean PMIDs
+
+pending = df[df["screening_decision"] == "Needs review"]
+for _, r in pending.iterrows():
+    print(f"\nPMID {r['pmid']} ({r['publication_year']})\n{r['title']}\n{r['abstract'][:1200]}\n")
+
