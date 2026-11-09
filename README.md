@@ -13,15 +13,15 @@ The aim is to demonstrate how data analytics can be applied to public health lit
 
 ## Research Questions
 
-1. How does the annual number of included publications vary between 2015 and 2026?
-2. How are included studies distributed across the locations reported in the dataset?
-3. Which research methods are most frequently represented among the included studies?
+1. How has FGM research publication output in Nigeria changed between 2015 and 2026?
+2. Which geopolitical zones in Nigeria receive the most research attention?
+3. What research methodologies are most commonly used in FGM-related studies?
 
 ## Hypotheses
 
-- **H1:** The annual number of included publications varies over the study period.
-- **H2:** Included studies are unevenly distributed across the locations reported in the dataset.
-- **H3:** Some research methods are more frequently represented than others.
+- H1: FGM research publications in Nigeria have increased over the study period.
+- H2: FGM research publications are geographically concentrated in certain geopolitical zones rather than evenly distributed across Nigeria..
+- H3: Quantitative researxh methodologies are the most commonly used approaches in FGM related studies in Nigeria.
 
 The exploratory analysis supported all three hypotheses descriptively within the screened dataset.
 

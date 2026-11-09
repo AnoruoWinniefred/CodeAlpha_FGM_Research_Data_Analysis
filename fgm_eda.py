@@ -1,248 +1,249 @@
+# FGM RESEARCH IN NIGERIA (2015-2026): EXPLORATORY DATA ANALYSIS
+import re
 
 import pandas as pd
-
-# Load the FGM article screening dataset
-df = pd.read_csv(
-    "fgm_articles_screening.csv",
-    dtype={"pmid": "string"}
-)
-
-# Inspect the dataset structure
-print("Dataset shape:", df.shape)
-
-print("\nFirst five rows:")
-print(df.head())
-
-print("\nColumn names:")
-print(df.columns.tolist())
-
-print("\nData types:")
-print(df.dtypes)
-
-print("\nMissing values per column:")
-print(df.isnull().sum())
-
-print("\nDuplicate PMIDs:")
-print(df["pmid"].duplicated().sum())
-
-print("\nSummary of numerical variables:")
-print(df.describe())
-
-
 import matplotlib.pyplot as plt
 
-# 1. Check the publication-year distribution
-print("\nPUBLICATIONS BY YEAR")
-print(df["publication_year"].value_counts().sort_index())
+pd.set_option("display.max_columns", None)
 
-# 2. Check screening decisions
-print("\nSCREENING DECISIONS")
-print(df["screening_decision"].value_counts(dropna=False))
+YEAR_START, YEAR_END = 2015, 2026
 
-# 3. Check study locations
-print("\nSTUDY LOCATIONS")
-print(df["study_location"].value_counts(dropna=False))
+ALL_ZONES = ["North-Central", "North-East", "North-West",
+             "South-East", "South-South", "South-West"]
 
-# 4. Check research types
-print("\nRESEARCH TYPES")
-print(df["research_type"].value_counts(dropna=False))
+# Only labels that explicitly name a geopolitical zone are mapped.
+ZONE_MAPPING = {
+    "South-Eastern Nigeria": "South-East",
+    "South-West Nigeria": "South-West",
+    "North-Central Nigeria": "North-Central",
+    "North-West Nigeria": "North-West",
+}
 
-# 5. Check for duplicate titles
-print("\nDUPLICATE TITLES")
-print(
-    df["title"].str.strip().str.lower().duplicated().sum()
-)
+THEME_KEYWORDS = {
+    "Socio-cultural factors": [
+        r"\bcultur", r"\btradition", r"\breligio", r"\bbelief",
+        r"\battitude", r"\bperception", r"\bsocial norm",
+        r"\bsocial rejection", r"\bsubjective norm", r"\bheritage",
+        r"\bstigma"],
+    "Prevention and interventions": [
+        r"\bprevent", r"\bintervention", r"\belimination",
+        r"\babandonment", r"\bdiscontinu", r"\bawareness",
+        r"\bpolicy", r"\blegislation", r"\bprohibition",
+        r"\bproject", r"\bimpact of"],
+    "Prevalence and determinants": [
+        r"\bprevalence", r"\bdeterminant", r"\bcorrelate",
+        r"\brisk factor", r"\bsociodemographic", r"\bsocio-economic",
+        r"\bdistribution", r"\bvariation"],
+    "Health consequences": [
+        r"\bhealth consequence", r"\bcomplication", r"\bobstetric",
+        r"\bchildbirth", r"\bsexual function", r"\bsexual behavio(u)?r",
+        r"\bpsychological", r"\binfertility", r"\bpregnancy",
+        r"\bhuman papilloma", r"\bhpv", r"\bdisability", r"\bmorbidity"],
+}
 
-# 6. Check for placeholder values
-placeholders = [
-    "not classified",
-    "unknown",
-    "not reported",
-    "n/a",
-    "na",
-    "none",
-    "not specified"
-]
-
-for column in [
-    "screening_decision",
-    "study_location",
-    "research_type"
-]:
-    values = df[column].astype("string").str.strip().str.lower()
-    count = values.isin(placeholders).sum()
-    print(f"{column}: {count} placeholder values")
-
-# 7. Visualise annual publication counts
-year_counts = df["publication_year"].value_counts().sort_index()
-
-plt.figure(figsize=(10, 5))
-year_counts.plot(kind="bar")
-plt.title("FGM Research Publications by Year")
-plt.xlabel("Publication Year")
-plt.ylabel("Number of Articles")
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.show()
-
-# 8. Visualise research types
-research_counts = df["research_type"].value_counts()
-
-plt.figure(figsize=(10, 6))
-top_research_types = research_counts.head(10).sort_values()
-
-top_research_types.plot(kind="barh")
-
-plt.title("Top 10 Research Types in FGM Publications")
-plt.xlabel("Number of Articles")
-plt.ylabel("Research Type")
-plt.tight_layout()
-plt.show()
-
-# 9. Visualise the most frequently reported study locations
-location_counts = df["study_location"].value_counts().head(15)
-
-location_counts.sort_values().plot(
-    kind="barh",
-    figsize=(9, 6)
-)
-plt.title("Top 15 Reported Study Locations")
-plt.xlabel("Number of Articles")
-plt.ylabel("Study Location")
-plt.tight_layout()
-plt.show()
-
-
-# TASK 2: Investigate inconsistent categories
-
-print("\n--- RESEARCH TYPE LABELS ---")
-print(
-    df["research_type"]
-    .value_counts(dropna=False)
-    .to_string()
-)
-
-print("\n--- STUDY LOCATION LABELS ---")
-print(
-    df["study_location"]
-    .value_counts(dropna=False)
-    .to_string()
-)
-
-print("\n--- SCREENING DECISIONS ---")
-print(
-    df["screening_decision"]
-    .value_counts(dropna=False)
-    .to_string()
-)
-
-# Check whether different titles refer to the same article
-print("\n--- POSSIBLE DUPLICATE TITLES ---")
-
-title_clean = df["title"].str.strip().str.lower()
-duplicate_titles = df[title_clean.duplicated(keep=False)]
-
-if duplicate_titles.empty:
-    print("No duplicate titles found.")
-else:
-    print(
-        duplicate_titles[
-            ["pmid", "title", "publication_year"]
-        ].sort_values("title").to_string(index=False)
-    )
-
-
-# TASK 2: Prepare the eligible dataset for analysis
-
-# Keep only records marked Include
-eda_df = df[
-    df["screening_decision"]
-    .str.strip()
-    .str.lower()
-    .eq("include")
-].copy()
-
-print("\n--- ELIGIBLE DATASET ---")
-print("Number of eligible articles:", len(eda_df))
-
-# Publication counts for included articles only
-print("\n--- ELIGIBLE PUBLICATIONS BY YEAR ---")
-print(
-    eda_df["publication_year"]
-    .value_counts()
-    .sort_index()
-    .to_string()
-)
-
-# Research types among included articles
-print("\n--- RESEARCH TYPES: INCLUDED ARTICLES ---")
-print(
-    eda_df["research_type"]
-    .value_counts()
-    .to_string()
-)
-
-# Location verification among included articles
-print("\n--- STUDY LOCATIONS: INCLUDED ARTICLES ---")
-print(
-    eda_df["study_location"]
-    .value_counts()
-    .to_string()
-)
-
-# Check the remaining unclassified records
-print("\n--- UNCLASSIFIED RESEARCH TYPES ---")
-print(
-    eda_df.loc[
-        eda_df["research_type"].str.strip().str.lower()
-        == "not classified",
-        ["pmid", "title", "publication_year", "abstract"]
-    ].to_string(index=False)
-)
-
-# Group research types into broader categories
-# Original research_type values remain unchanged.
 
 def group_research_type(value):
-    text = str(value).lower()
-
-    if "literature review" in text:
-        return "Literature review"
-
-    if "quantitative/qualitative" in text or "mixed" in text:
+    t = str(value).strip().casefold()
+    # "mixed method" (not "mixed") so "mixed-effects" models are not caught
+    if ("mixed method" in t
+            or "quantitative/qualitative" in t
+            or "qualitative/quantitative" in t
+            or ("survey" in t and "fgd" in t)):
         return "Mixed methods"
-
-    if "qualitative" in text:
+    if "literature review" in t:
+        return "Literature review"
+    if "qualitative" in t:
         return "Qualitative"
-
-    if "quantitative" in text:
-        if "secondary" in text or "ndhs" in text or "dhs data" in text or "mics data" in text:
-            return "Secondary survey/data analysis"
-        if "cross-sectional" in text:
-            return "Cross-sectional quantitative"
-        if "cohort" in text or "longitudinal" in text:
-            return "Longitudinal/cohort"
-        if "quasi-experimental" in text:
-            return "Quasi-experimental"
-        return "Other quantitative"
-
+    if "quantitative" in t:
+        return "Quantitative"
     return "Needs manual review"
 
 
-eda_df["research_type_group"] = (
-    eda_df["research_type"].apply(group_research_type)
-)
+def classify_themes(row):
+    text = f"{row['title']} {row['abstract']}".casefold()
+    return [theme for theme, patterns in THEME_KEYWORDS.items()
+            if any(re.search(p, text) for p in patterns)]
 
-print("\n--- GROUPED RESEARCH TYPES ---")
-print(eda_df["research_type_group"].value_counts().to_string())
 
-# Plot the grouped categories
-group_counts = eda_df["research_type_group"].value_counts().sort_values()
+def location_level(label):
+    low = label.casefold()
+    if label in ZONE_MAPPING:
+        return "Zone-specific"
+    if low == "national":
+        return "National"
+    if "multi-country" in low:
+        return "Multi-country"
+    if low == "northern nigeria":
+        return "Northern Nigeria (zone unclear)"
+    if low == "not applicable":
+        return "Not applicable"
+    if "locality not specified" in low:
+        return "Nigeria (locality unspecified)"
+    return "Other / missing"
 
-plt.figure(figsize=(9, 5))
-group_counts.plot(kind="barh")
-plt.title("Research Methods in Included FGM Publications")
-plt.xlabel("Number of Articles")
-plt.ylabel("Broad Research Type")
+
+# %% 1. LOAD AND INSPECT
+print("=" * 65)
+print("FGM RESEARCH IN NIGERIA (2015-2026): EXPLORATORY DATA ANALYSIS")
+print("=" * 65)
+
+df = pd.read_csv("cleaneddata.csv", dtype={"pmid": str})
+df.columns = df.columns.str.strip()
+for col in ["screening_decision", "study_location", "research_type",
+            "title", "abstract"]:
+    df[col] = df[col].fillna("").astype(str).str.strip()
+df["publication_year"] = pd.to_numeric(df["publication_year"], errors="coerce")
+
+print("\nDataset shape:", df.shape)
+print("Duplicate PMIDs:", df["pmid"].duplicated().sum())
+print("Empty PMIDs:", (df["pmid"].fillna("") == "").sum())
+print("Duplicate titles:", df["title"].str.casefold().duplicated().sum())
+
+for col in ["screening_decision", "study_location", "research_type"]:
+    print(f"\n--- {col.upper()} ---")
+    print(df[col].value_counts(dropna=False).to_string())
+
+# %% 2. ELIGIBLE DATASET
+eda_df = df[df["screening_decision"].str.casefold()
+            .isin(["include", "included"])].copy()
+eda_df = eda_df[eda_df["publication_year"].between(YEAR_START, YEAR_END)].copy()
+eda_df["study_location"] = eda_df["study_location"].replace(
+    {"Nationwide (Multi-country)": "Multi-country"})
+
+print("\nEligible articles:", len(eda_df))
+print("Year range:", int(eda_df["publication_year"].min()), "to",
+      int(eda_df["publication_year"].max()))
+
+# %% 3. H1: PUBLICATION TRENDS
+print("\n" + "=" * 65)
+print("H1: Has FGM research output in Nigeria increased over time?")
+print("=" * 65)
+
+yearly = (eda_df["publication_year"].astype(int).value_counts().sort_index()
+          .reindex(range(YEAR_START, YEAR_END + 1), fill_value=0))
+print(yearly.to_string())
+
+plt.figure(figsize=(5, 3))
+plt.plot(yearly.index, yearly.values, marker="o", linewidth=2)
+plt.title("FGM Research Publications in Nigeria (2015-2026)", fontsize=10)
+plt.xlabel("Publication Year", fontsize=9)
+plt.ylabel("Number of Publications", fontsize=9)
+plt.xticks(range(YEAR_START, YEAR_END + 1), rotation=45, fontsize=8)
+plt.yticks(fontsize=8)
+plt.grid(alpha=0.3)
 plt.tight_layout()
 plt.show()
+
+half = len(yearly) // 2
+first, second = yearly.iloc[:half], yearly.iloc[half:]
+print(f"\n{first.index[0]}-{first.index[-1]}: {int(first.sum())} articles | "
+      f"{second.index[0]}-{second.index[-1]}: {int(second.sum())} articles")
+
+rho_all = yearly.index.to_series().corr(yearly, method="spearman")
+rho_excl = yearly.index[:-1].to_series().corr(yearly.iloc[:-1],
+                                              method="spearman")
+print(f"Spearman rho (year vs count): {rho_all:.2f} "
+      f"(excluding partial {YEAR_END}: {rho_excl:.2f})")
+print(f"Note: {YEAR_END} is a partial year and should be read cautiously.")
+
+# %% 4. H2: GEOGRAPHICAL DISTRIBUTION
+print("\n" + "=" * 65)
+print("H2: Which geopolitical zones receive the most research attention?")
+print("=" * 65)
+
+eda_df["geopolitical_zone"] = eda_df["study_location"].map(ZONE_MAPPING)
+eda_df["location_level"] = eda_df["study_location"].apply(location_level)
+
+print("\nStudies by location level:")
+print(eda_df["location_level"].value_counts().to_string())
+
+zones = (eda_df["geopolitical_zone"].dropna().value_counts()
+         .reindex(ALL_ZONES, fill_value=0))
+print("\nStudies by explicitly identified zone (all six zones):")
+print(zones.to_string())
+print("Zones with no zone-specific studies:",
+      [z for z in ALL_ZONES if zones[z] == 0])
+print(f"Zone-specific studies: {int(zones.sum())} of {len(eda_df)}")
+
+plt.figure(figsize=(5, 3))
+zones.plot(kind="bar", width=0.65)
+plt.title("FGM Research by Explicitly Identified Geopolitical Zone", fontsize=10)
+plt.xlabel("Geopolitical Zone", fontsize=9)
+plt.ylabel("Number of Publications", fontsize=9)
+plt.xticks(rotation=30, ha="right", fontsize=8)
+plt.yticks(fontsize=8)
+plt.tight_layout()
+plt.show()
+
+# %% 5. H3: RESEARCH METHODOLOGIES
+print("\n" + "=" * 65)
+print("H3: Which research methodologies are most common?")
+print("=" * 65)
+
+eda_df["methodology_group"] = eda_df["research_type"].apply(group_research_type)
+methods = eda_df["methodology_group"].value_counts()
+print(methods.to_string())
+print(f"Quantitative share: {methods.get('Quantitative', 0) / len(eda_df):.0%}")
+
+review = eda_df[eda_df["methodology_group"] == "Needs manual review"]
+if not review.empty:
+    print("\nRecords needing methodology review:")
+    print(review[["pmid", "title", "research_type"]].to_string(index=False))
+
+plt.figure(figsize=(5, 3))
+methods.sort_values().plot(kind="bar", width=0.65)
+plt.title("Research Methodologies Used in FGM Studies", fontsize=10)
+plt.xlabel("Research Methodology", fontsize=9)
+plt.ylabel("Number of Publications", fontsize=9)
+plt.xticks(rotation=20, ha="right", fontsize=8)
+plt.yticks(fontsize=8)
+plt.tight_layout()
+plt.show()
+
+# %% 6. H4: RESEARCH THEMES (provisional keyword classification)
+print("\n" + "=" * 65)
+print("H4: What are the major themes?")
+print("=" * 65)
+
+eda_df["research_themes"] = eda_df.apply(classify_themes, axis=1)
+themes = eda_df["research_themes"].explode().dropna().value_counts()
+
+print("\nTheme distribution (an article can match several themes):")
+for theme, n in themes.items():
+    print(f"  {theme}: {n} of {len(eda_df)} ({n / len(eda_df):.0%})")
+
+unclassified = eda_df[eda_df["research_themes"].apply(len) == 0]
+print("\nArticles with no matched theme:")
+print(unclassified[["pmid", "title"]].to_string(index=False))
+
+plt.figure(figsize=(5, 3))
+themes.sort_values().plot(kind="barh", width=0.65)
+plt.title("Major Themes in FGM Research in Nigeria", fontsize=10)
+plt.xlabel("Number of Publications", fontsize=9)
+plt.ylabel("Research Theme", fontsize=9)
+plt.xticks(fontsize=8)
+plt.yticks(fontsize=8)
+plt.tight_layout()
+plt.show()
+
+print("\nCaution: keyword themes are exploratory. Broad terms such as "
+      "'awareness' and 'policy' match most abstracts, so validate a sample "
+      "manually before treating these shares as findings.")
+
+# %% 7. LIMITATIONS
+print("\n" + "=" * 65)
+print("LIMITATIONS")
+print("=" * 65)
+print("""
+1. Database coverage: PubMed only; other databases are not represented.
+2. Study selection: results depend on the screening criteria applied.
+3. Geography: national, multi-country and broad labels cannot be assigned
+   to a specific zone and are kept separate.
+4. Partial year: the 2026 count covers a partial year.
+5. Methodology: original labels were grouped into four broad categories.
+6. Themes: keyword-based and provisional; they do not establish an
+   article's main focus.
+7. Counts describe research output, not FGM prevalence or the
+   effectiveness of interventions.
+""")
+print("EDA COMPLETED.")
